@@ -19,5 +19,5 @@ RUN npm run build
 EXPOSE 3000
 
 # Jalankan aplikasi
-CMD ["npm", "start"]
+CMD ["npm", "start", "--", "-H", "0.0.0.0"]
 

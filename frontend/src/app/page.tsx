@@ -1,7 +1,11 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
+  const router = useRouter();
+  const [user, setUser] = useState('');
+  
   // State untuk form order
   const [item, setItem] = useState('Laptop');
   const [qty, setQty] = useState(1);
@@ -48,16 +52,39 @@ export default function Home() {
     }
   };
 
-  // Ambil stok saat halaman pertama dibuka
+  // Cek Login saat halaman dibuka
   useEffect(() => {
+    const token = localStorage.getItem('token');
+    const username = localStorage.getItem('user');
+    if (!token) {
+      router.push('/login'); // Tendang ke login kalau gak ada token
+    } else {
+      setUser(username || 'Admin');
+    }
     fetchStocks();
-  }, []);
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-gray-100 text-gray-900 p-10 font-sans">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold text-blue-700 mb-2">SCM Dashboard</h1>
-        <p className="mb-8 text-gray-600">Sistem Supply Chain Microservices (Python + Next.js)</p>
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-4xl font-bold text-blue-700 mb-2">SCM Dashboard</h1>
+            <p className="text-gray-600">Sistem Supply Chain Microservices (Python + Next.js)</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="font-bold">Hi, {user}</span>
+            <button 
+              onClick={() => {
+                localStorage.clear();
+                router.push('/login');
+              }} 
+              className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition"
+            >
+              Logout
+            </button>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           

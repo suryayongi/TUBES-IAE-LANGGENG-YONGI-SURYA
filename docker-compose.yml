@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # 1. RabbitMQ (Wajib untuk EAI)
   rabbitmq:
@@ -34,7 +32,15 @@ services:
     networks:
       - scm-network
 
-  # 4. Frontend (Next.js - Port 3000)
+  # 4. Auth Service (Python - Port 8002)
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "8002:8002"
+    networks:
+      - scm-network
+
+  # 5. Frontend (Next.js - Port 3000)
   frontend:
     build: ./frontend
     ports:
@@ -42,6 +48,7 @@ services:
     depends_on:
       - order-service
       - inventory-service
+      - auth-service
     networks:
       - scm-network
 

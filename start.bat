@@ -1,62 +1,41 @@
 @echo off
-title SCM Microservices Launcher - Tubes EAI
-cls
-echo ========================================================
-echo    TUBES SCM MICROSERVICES - AUTO LAUNCHER
-echo ========================================================
+echo ========================================
+echo   SCM Microservices - Starting...
+echo ========================================
 echo.
 
-REM 1. Cek Docker
-echo [*] Mengecek status Docker...
-docker info >nul 2>&1
-if %errorlevel% neq 0 (
-    color 0C
-    echo [X] ERROR: Docker Desktop belum nyala!
-    echo     Tolong nyalakan Docker Desktop dulu, baru jalankan file ini lagi.
-    pause
-    exit
-)
-echo [V] Docker siap.
-
-REM 2. Bersih-bersih
-echo.
-echo [*] Membersihkan container lama...
-docker-compose down
-
-REM 3. Build & Run
-echo.
-echo [*] Membangun dan menyalakan semua service...
-echo     (Tunggu sebentar, sedang meracik kodingan...)
-docker-compose up --build -d
-
-if %errorlevel% neq 0 (
-    color 0C
-    echo [X] Gagal! Pastikan kamu menjalankan file ini di folder yang ada docker-compose.yml
-    pause
-    exit
-)
-
-REM 4. Info Akses
-cls
-echo ========================================================
-echo [V] ALHAMDULILLAH, SISTEM SUDAH JALAN!
-echo ========================================================
-echo.
-echo Silakan akses URL berikut:
-echo [1] Frontend Dashboard : http://localhost:3000  (Utama)
-echo [2] RabbitMQ Admin     : http://localhost:15672 (User/Pass: guest)
-echo [3] Order Service Docs : http://localhost:8000/docs
-echo [4] Inventory Docs     : http://localhost:8001/docs
-echo.
-echo ========================================================
-echo Membuka Frontend otomatis dalam 3 detik...
-timeout /t 3 >nul
-start http://localhost:3000
+echo [1/3] Stopping existing containers...
+docker compose down
 
 echo.
-echo [*] Menampilkan LOG AKTIVITAS (Order & Inventory)...
-echo     (Perhatikan log di bawah ini saat kamu klik Order di web)
-echo     Tekan Ctrl+C jika ingin menutup jendela ini.
+echo [2/3] Building and starting all services...
+docker compose up --build -d
+
 echo.
-echo ========================================================
-docker-compose logs -f order-service inventory-service
+echo [3/3] Waiting for services to be ready...
+timeout /t 10 /nobreak >nul
+
+echo.
+echo ========================================
+echo   Services Status:
+echo ========================================
+docker compose ps
+
+echo.
+echo ========================================
+echo   Access URLs:
+echo ========================================
+echo   Frontend:        http://localhost:3000
+echo   Order Service:   http://localhost:8000
+echo   Inventory:       http://localhost:8001
+echo   Auth Service:    http://localhost:8002
+echo   RabbitMQ:       http://localhost:15672
+echo.
+echo   RabbitMQ Login: guest / guest
+echo.
+echo ========================================
+echo   To view logs: docker compose logs -f
+echo   To stop:      stop.bat
+echo ========================================
+echo.
+pause
