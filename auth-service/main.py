@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from passlib.context import CryptContext
+import bcrypt
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 
@@ -19,7 +19,6 @@ app.add_middleware(
 # Konfigurasi Keamanan
 SECRET_KEY = "rahasia_super_aman_langgeng_yongi_surya" # Ganti sesuka hati
 ALGORITHM = "HS256"
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Database User Sementara (Memory)
 fake_users_db = {}
@@ -35,10 +34,16 @@ class Token(BaseModel):
 
 # Fungsi Helper
 def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+    # hashed_password adalah bytes dari bcrypt
+    if isinstance(hashed_password, str):
+        hashed_password = hashed_password.encode('utf-8')
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password)
 
 def get_password_hash(password):
-    return pwd_context.hash(password)
+    # Generate salt dan hash password
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed.decode('utf-8')  # Return as string untuk simpan di dict
 
 def create_access_token(data: dict):
     to_encode = data.copy()
