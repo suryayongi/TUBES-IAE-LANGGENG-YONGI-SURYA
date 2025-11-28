@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+    spec:
+      containers:
+      - name: order-service
+        # Ganti 'order-img' dengan nama image di laptopmu atau build manual dulu
+        # Untuk lokal (Minikube/Docker Desktop), set imagePullPolicy: Never biar dia cari di laptop
+        image: order-service:latest 
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8000
+        env:
+        - name: RABBITMQ_HOST
+          value: "rabbitmq"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+spec:
+  selector:
+    app: order-service
+  type: LoadBalancer # Biar bisa diakses di localhost:8000
+  ports:
+  - port: 8000
+    targetPort: 8000
+

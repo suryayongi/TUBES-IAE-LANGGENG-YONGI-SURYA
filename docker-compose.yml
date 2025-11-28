@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # 1. RabbitMQ (Wajib untuk EAI)
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - scm-network
+
+  # 2. Order Service (Python - Port 8000)
+  order-service:
+    build: ./order-service
+    ports:
+      - "8000:8000"
+    depends_on:
+      - rabbitmq
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+    networks:
+      - scm-network
+
+  # 3. Inventory Service (Python - Port 8001)
+  inventory-service:
+    build: ./inventory-service
+    ports:
+      - "8001:8001"
+    depends_on:
+      - rabbitmq
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+    networks:
+      - scm-network
+
+  # 4. Frontend (Next.js - Port 3000)
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - order-service
+      - inventory-service
+    networks:
+      - scm-network
+
+networks:
+  scm-network:
+    driver: bridge
