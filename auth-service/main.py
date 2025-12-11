@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = FastAPI()
 
-# Setup CORS (Wajib biar Frontend bisa akses)
+# Setup CORS 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,7 +17,7 @@ app.add_middleware(
 )
 
 # Konfigurasi Keamanan
-SECRET_KEY = "rahasia_super_aman_langgeng_yongi_surya" # Ganti sesuka hati
+SECRET_KEY = "rahasia_super_aman_langgeng_yongi_surya" 
 ALGORITHM = "HS256"
 
 # Database User Sementara (Memory)

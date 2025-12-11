@@ -57,5 +57,5 @@ def create_order(order: Order):
     
     connection.close()
     
-    print(f"[x] Order dikirim ke Inventory: {message}")
+    print(f"[x] Order dikirim ke Inventory: {message}, flush=True")
     return {"message": "Order diterima, sedang diproses oleh gudang", "data": order_data}

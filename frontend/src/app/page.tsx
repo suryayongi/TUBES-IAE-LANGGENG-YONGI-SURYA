@@ -69,8 +69,8 @@ export default function Home() {
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-blue-700 mb-2">SCM Dashboard</h1>
-            <p className="text-gray-600">Sistem Supply Chain Microservices (Python + Next.js)</p>
+            <h1 className="text-4xl font-bold text-blue-700 mb-2">Lang Logistics</h1>
+            <p className="text-gray-600">Sistem Supply Chain Microservices</p>
           </div>
           <div className="flex items-center gap-4">
             <span className="font-bold">Hi, {user}</span>
@@ -155,12 +155,6 @@ export default function Home() {
             ) : (
               <p className="text-center text-gray-500 py-10">Sedang memuat data stok...</p>
             )}
-            
-            <div className="mt-6 p-4 bg-yellow-50 rounded-lg text-xs text-yellow-800 border border-yellow-200">
-              ℹ️ <strong>Konsep EAI:</strong> Saat tombol "Kirim Order" ditekan, Frontend memanggil 
-              Order Service. Order Service mengirim pesan ke RabbitMQ. Inventory Service mengambil pesan 
-              itu dan mengurangi stok secara otomatis di background.
-            </div>
           </div>
 
         </div>
