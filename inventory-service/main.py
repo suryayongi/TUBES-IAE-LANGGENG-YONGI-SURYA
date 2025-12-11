@@ -36,7 +36,7 @@ def get_rabbitmq_connection():
             time.sleep(5)
 
 def consume_orders():
-    # --- LOOP ABADI (Agar consumer tidak pernah mati) ---
+    # --- LOOP ABADI (MANTRA ANTI-MATI) ---
     while True:
         try:
             connection = get_rabbitmq_connection()

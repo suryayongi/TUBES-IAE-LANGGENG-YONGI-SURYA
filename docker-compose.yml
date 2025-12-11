@@ -17,6 +17,7 @@ services:
       - rabbitmq
     environment:
       - RABBITMQ_HOST=rabbitmq
+      - PYTHONUNBUFFERED=1
     networks:
       - scm-network
 
@@ -29,6 +30,7 @@ services:
       - rabbitmq
     environment:
       - RABBITMQ_HOST=rabbitmq
+      - PYTHONUNBUFFERED=1
     networks:
       - scm-network
 
@@ -48,7 +50,7 @@ services:
     depends_on:
       - order-service
       - inventory-service
-      - auth-service
+      - auth-service  
     networks:
       - scm-network
 
