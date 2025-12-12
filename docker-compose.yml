@@ -1,5 +1,5 @@
 services:
-  # 1. RabbitMQ (Wajib untuk EAI)
+  # 1. RabbitMQ 
   rabbitmq:
     image: rabbitmq:3-management
     ports:

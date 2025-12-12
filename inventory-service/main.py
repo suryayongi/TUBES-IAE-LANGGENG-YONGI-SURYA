@@ -36,7 +36,6 @@ def get_rabbitmq_connection():
             time.sleep(5)
 
 def consume_orders():
-    # --- LOOP ABADI (MANTRA ANTI-MATI) ---
     while True:
         try:
             connection = get_rabbitmq_connection()
@@ -61,7 +60,7 @@ def consume_orders():
                 except Exception as e:
                     print(f" [ERROR] Gagal proses pesan: {e}", flush=True)
 
-            print(" [Inventory] 👀 MENUNGGU ORDER...", flush=True)
+            print(" [Inventory] MENUNGGU ORDER...", flush=True)
             channel.basic_consume(queue='stock_check_queue', on_message_callback=callback, auto_ack=True)
             channel.start_consuming()
         

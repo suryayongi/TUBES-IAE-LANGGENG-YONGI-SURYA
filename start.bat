@@ -1,6 +1,6 @@
 @echo off
 echo ========================================
-echo   SCM Microservices - Starting...
+echo   Lang Logistics - Starting...
 echo ========================================
 echo.
 
