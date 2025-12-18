@@ -55,7 +55,8 @@ def create_order(order: Order):
     # Kirim pesan ke Inventory
     channel.basic_publish(exchange='', routing_key='stock_check_queue', body=message)
     
+    time.sleep(0.2)
     connection.close()
     
-    print(f"[x] Order dikirim ke Inventory: {message}, flush=True")
+    print(f"[x] Order dikirim ke Inventory: {message}", flush=True)
     return {"message": "Order diterima, sedang diproses oleh gudang", "data": order_data}
