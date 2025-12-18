@@ -44,6 +44,8 @@ def root():
 def create_order(order: Order):
     connection = get_rabbitmq_connection()
     channel = connection.channel()
+    
+    
     channel.queue_declare(queue='stock_check_queue')
     
     order_data = order.dict()
@@ -51,9 +53,11 @@ def create_order(order: Order):
     
     channel.basic_publish(exchange='', routing_key='stock_check_queue', body=message)
     
-    
+   
     time.sleep(0.5) 
     connection.close()
- 
+    
+    
     print(f"[x] Order dikirim ke Inventory: {message}", flush=True) 
+    
     return {"message": "Order diterima, sedang diproses oleh gudang", "data": order_data}
