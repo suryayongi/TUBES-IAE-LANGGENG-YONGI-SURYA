@@ -1,18 +1,16 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import pika
 import json
-import os
 import threading
 import time
-import sys
+from datetime import datetime
 
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -20,63 +18,67 @@ app.add_middleware(
 inventory_db = {
     "Laptop": 100,
     "Mouse": 50,
-    "Keyboard": 75
+    "Keyboard": 75,
+    "Monitor": 5
 }
 
-def get_rabbitmq_connection():
-    host = os.getenv('RABBITMQ_HOST', 'localhost')
-    while True:
-        try:
-            print(f" [Inventory] 🔌 Mencoba konek ke: {host}...", flush=True)
-            connection = pika.BlockingConnection(pika.ConnectionParameters(host))
-            print(" [Inventory] ✅ KONEKSI RABBITMQ SUKSES!", flush=True)
-            return connection
-        except Exception as e:
-            print(f" [Inventory] ⏳ Gagal konek, retry 5 detik... ({e})", flush=True)
-            time.sleep(5)
+history_logs = []
+
+def process_order(ch, method, properties, body):
+    try:
+        data = json.loads(body)
+        item_id = data.get("item_id")
+        qty = data.get("quantity")
+        
+        if item_id in inventory_db:
+            if inventory_db[item_id] >= qty:
+                inventory_db[item_id] -= qty
+                history_logs.insert(0, {
+                    "type": "ORDER",
+                    "item": item_id,
+                    "qty": qty,
+                    "time": datetime.now().strftime("%H:%M:%S")
+                })
+                print(f"[SUCCESS] {item_id} dikurangi {qty}", flush=True)
+            else:
+                print(f"[FAILED] Stok {item_id} tidak cukup", flush=True)
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+    except Exception as e:
+        print(f"[ERROR] Consumer Error: {e}", flush=True)
 
 def consume_orders():
     while True:
         try:
-            connection = get_rabbitmq_connection()
+            connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq', heartbeat=600))
             channel = connection.channel()
             channel.queue_declare(queue='stock_check_queue')
-
-            def callback(ch, method, properties, body):
-                try:
-                    print(f" [Inventory] 📩 DITERIMA: {body}", flush=True)
-                    order = json.loads(body)
-                    item_id = order.get('item_id')
-                    qty = order.get('quantity')
-                    
-                    if item_id in inventory_db:
-                        if inventory_db[item_id] >= qty:
-                            inventory_db[item_id] -= qty
-                            print(f" [SUCCESS] Stok {item_id} -{qty}. Sisa: {inventory_db[item_id]}", flush=True)
-                        else:
-                            print(f" [FAILED] Stok Habis untuk {item_id}", flush=True)
-                    else:
-                        print(f" [ERROR] Barang {item_id} tidak dikenal", flush=True)
-                except Exception as e:
-                    print(f" [ERROR] Gagal proses pesan: {e}", flush=True)
-
-            print(" [Inventory] MENUNGGU ORDER...", flush=True)
-            channel.basic_consume(queue='stock_check_queue', on_message_callback=callback, auto_ack=True)
+            channel.basic_consume(queue='stock_check_queue', on_message_callback=process_order)
+            print(" [*] Menunggu order...", flush=True)
             channel.start_consuming()
-        
-        except Exception as e:
-            print(f" [CRITICAL] ☠️ Koneksi putus: {e}. Restarting dalam 5 detik...", flush=True)
+        except Exception:
             time.sleep(5)
 
-@app.on_event("startup")
-def startup_event():
-    t = threading.Thread(target=consume_orders, daemon=True)
-    t.start()
-
-@app.get("/")
-def root():
-    return {"status": "Active"}
+threading.Thread(target=consume_orders, daemon=True).start()
 
 @app.get("/stocks")
 def get_stocks():
-    return inventory_db
+    return [{"item_id": k, "quantity": v} for k, v in inventory_db.items()]
+
+@app.post("/restock")
+def restock(data: dict):
+    item_id = data.get("item_id")
+    qty = data.get("quantity")
+    if item_id in inventory_db:
+        inventory_db[item_id] += qty
+        history_logs.insert(0, {
+            "type": "RESTOCK",
+            "item": item_id,
+            "qty": qty,
+            "time": datetime.now().strftime("%H:%M:%S")
+        })
+        return {"message": "Restock berhasil"}
+    raise HTTPException(status_code=404, detail="Barang tidak ada")
+
+@app.get("/history")
+def get_history():
+    return history_logs[:10]
