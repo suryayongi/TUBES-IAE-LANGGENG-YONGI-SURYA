@@ -1,5 +1,4 @@
 services:
-  # 1. RabbitMQ 
   rabbitmq:
     image: rabbitmq:3-management
     ports:
@@ -8,49 +7,56 @@ services:
     networks:
       - scm-network
 
-  # 2. Order Service (Python - Port 8000)
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: iae_db
+    ports:
+      - "3306:3306"
+    networks:
+      - scm-network
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "8002:8002"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - scm-network
+
+  inventory-service:
+    build: ./inventory-service
+    ports:
+      - "8001:8001"
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    networks:
+      - scm-network
+
   order-service:
     build: ./order-service
     ports:
       - "8000:8000"
     depends_on:
       - rabbitmq
-    environment:
-      - RABBITMQ_HOST=rabbitmq
-      - PYTHONUNBUFFERED=1
     networks:
       - scm-network
 
-  # 3. Inventory Service (Python - Port 8001)
-  inventory-service:
-    build: ./inventory-service
-    ports:
-      - "8001:8001"
-    depends_on:
-      - rabbitmq
-    environment:
-      - RABBITMQ_HOST=rabbitmq
-      - PYTHONUNBUFFERED=1
-    networks:
-      - scm-network
-
-  # 4. Auth Service (Python - Port 8002)
-  auth-service:
-    build: ./auth-service
-    ports:
-      - "8002:8002"
-    networks:
-      - scm-network
-
-  # 5. Frontend (Next.js - Port 3000)
   frontend:
     build: ./frontend
     ports:
       - "3000:3000"
-    depends_on:
-      - order-service
-      - inventory-service
-      - auth-service  
     networks:
       - scm-network
 

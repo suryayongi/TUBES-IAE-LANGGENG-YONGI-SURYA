@@ -1,8 +1,8 @@
 fastapi
 uvicorn
-pydantic
+pika
+sqlalchemy
+pymysql
+cryptography
+python-jose
 passlib
-bcrypt
-python-jose[cryptography]
-python-multipart
-

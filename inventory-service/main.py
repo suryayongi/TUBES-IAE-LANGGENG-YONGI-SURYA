@@ -1,84 +1,89 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-import pika
-import json
-import threading
-import time
+from sqlalchemy import create_engine, Column, String, Integer, DateTime
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+import pika, json, threading, time
 from datetime import datetime
 
+DATABASE_URL = "mysql+pymysql://root:admin@db/iae_db"
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+class Product(Base):
+    __tablename__ = "inventory"
+    item_id = Column(String(50), primary_key=True)
+    quantity = Column(Integer)
+
+class Log(Base):
+    __tablename__ = "history"
+    id = Column(Integer, primary_key=True)
+    type = Column(String(20))
+    item = Column(String(50))
+    qty = Column(Integer)
+    time = Column(DateTime, default=datetime.utcnow)
+
+Base.metadata.create_all(bind=engine)
+
 app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-inventory_db = {
-    "Laptop": 100,
-    "Mouse": 50,
-    "Keyboard": 75,
-    "Monitor": 5
-}
-
-history_logs = []
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 def process_order(ch, method, properties, body):
-    try:
-        data = json.loads(body)
-        item_id = data.get("item_id")
-        qty = data.get("quantity")
-        
-        if item_id in inventory_db:
-            if inventory_db[item_id] >= qty:
-                inventory_db[item_id] -= qty
-                history_logs.insert(0, {
-                    "type": "ORDER",
-                    "item": item_id,
-                    "qty": qty,
-                    "time": datetime.now().strftime("%H:%M:%S")
-                })
-                print(f"[SUCCESS] {item_id} dikurangi {qty}", flush=True)
-            else:
-                print(f"[FAILED] Stok {item_id} tidak cukup", flush=True)
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-    except Exception as e:
-        print(f"[ERROR] Consumer Error: {e}", flush=True)
+    db = SessionLocal()
+    data = json.loads(body)
+    item_id, qty = data.get("item_id"), data.get("quantity")
+    prod = db.query(Product).filter(Product.item_id == item_id).first()
+    if prod and prod.quantity >= qty:
+        prod.quantity -= qty
+        db.add(Log(type="ORDER", item=item_id, qty=qty))
+        db.commit()
+    db.close()
+    ch.basic_ack(delivery_tag=method.delivery_tag)
 
-def consume_orders():
+def consume():
     while True:
         try:
-            connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq', heartbeat=600))
-            channel = connection.channel()
-            channel.queue_declare(queue='stock_check_queue')
-            channel.basic_consume(queue='stock_check_queue', on_message_callback=process_order)
-            print(" [*] Menunggu order...", flush=True)
-            channel.start_consuming()
-        except Exception:
-            time.sleep(5)
+            conn = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq', heartbeat=600))
+            chan = conn.channel()
+            chan.queue_declare(queue='stock_check_queue')
+            chan.basic_consume(queue='stock_check_queue', on_message_callback=process_order)
+            chan.start_consuming()
+        except: time.sleep(5)
 
-threading.Thread(target=consume_orders, daemon=True).start()
+threading.Thread(target=consume, daemon=True).start()
+
+@app.on_event("startup")
+def init_inventory():
+    db = SessionLocal()
+    if not db.query(Product).first():
+        db.add_all([Product(item_id="Laptop", quantity=100), Product(item_id="Mouse", quantity=50), Product(item_id="Monitor", quantity=10)])
+        db.commit()
+    db.close()
 
 @app.get("/stocks")
 def get_stocks():
-    return [{"item_id": k, "quantity": v} for k, v in inventory_db.items()]
+    db = SessionLocal()
+    res = db.query(Product).all()
+    db.close()
+    return res
 
 @app.post("/restock")
 def restock(data: dict):
-    item_id = data.get("item_id")
-    qty = data.get("quantity")
-    if item_id in inventory_db:
-        inventory_db[item_id] += qty
-        history_logs.insert(0, {
-            "type": "RESTOCK",
-            "item": item_id,
-            "qty": qty,
-            "time": datetime.now().strftime("%H:%M:%S")
-        })
-        return {"message": "Restock berhasil"}
-    raise HTTPException(status_code=404, detail="Barang tidak ada")
+    db = SessionLocal()
+    prod = db.query(Product).filter(Product.item_id == data["item_id"]).first()
+    if prod:
+        prod.quantity += data["quantity"]
+        db.add(Log(type="RESTOCK", item=data["item_id"], qty=data["quantity"]))
+        db.commit()
+        db.close()
+        return {"message": "Success"}
+    db.close()
+    raise HTTPException(status_code=404)
 
 @app.get("/history")
 def get_history():
-    return history_logs[:10]
+    db = SessionLocal()
+    res = db.query(Log).order_by(Log.id.desc()).limit(10).all()
+    db.close()
+    return [{"type": l.type, "item": l.item, "qty": l.qty, "time": l.time.strftime("%H:%M:%S")} for l in res]
