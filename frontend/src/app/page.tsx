@@ -15,7 +15,6 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
-      // Pakai jalur Proxy /api/inventory
       const resStock = await fetch('/api/inventory/stocks');
       if (!resStock.ok) throw new Error(`Stok Error: ${resStock.status}`);
       const s = await resStock.json();
@@ -53,14 +52,22 @@ export default function Dashboard() {
   const handleAction = async (type: string, id: string) => {
     const qtyInput = parseInt(inputs[id] || '1');
     const quantity = qtyInput > 0 ? qtyInput : 1;
+
     if (type === 'order') {
-      // Cari barang yang mau di-order di data stok saat ini
       const currentItem = stocks.find(s => s.item_id === id);
       
-      // Cek apakah barang ada DAN jumlah order melebihi stok
-      if (currentItem && quantity > currentItem.quantity) {
-        alert("Maaf, Pesanan melebihi stock tersedia");
-        return; 
+      if (currentItem) {
+        // Cek 1: Apakah stok sudah habis total?
+        if (currentItem.quantity <= 0) {
+          alert("Maaf stock habis");
+          return; r
+        }
+        
+        // Cek 2: Apakah jumlah order melebihi sisa stok?
+        if (quantity > currentItem.quantity) {
+          alert(`Maaf, Pesanan melebihi stock tersedia (Sisa: ${currentItem.quantity})`);
+          return; 
+        }
       }
     }
 
