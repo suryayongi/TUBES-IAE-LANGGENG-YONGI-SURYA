@@ -12,7 +12,8 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     try {
-      const res = await fetch('http://localhost:8002/token', {
+      // PERUBAHAN DI SINI: Pakai jalur Proxy /api/auth
+      const res = await fetch('/api/auth/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
@@ -26,10 +27,12 @@ export default function LoginPage() {
         setError(data.detail || 'LOGIN FAILED');
       }
     } catch (err) {
-      setError('AUTH SERVICE OFFLINE');
+      setError('CONNECTION ERROR');
     }
   };
 
+  // ... (Sisa kode tampilan login sama persis seperti sebelumnya)
+  // Copy dari kode login sebelumnya mulai dari return (...) sampai bawah
   return (
     <div className="flex h-screen bg-slate-950 items-center justify-center font-sans text-white">
       <div className="w-full max-w-md bg-slate-900 p-12 rounded-[3rem] border border-slate-800 shadow-2xl">

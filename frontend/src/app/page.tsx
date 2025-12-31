@@ -8,35 +8,34 @@ interface HistoryItem { type: string; item: string; qty: number; time: string; }
 export default function Dashboard() {
   const [stocks, setStocks] = useState<StockItem[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
-  const [role, setRole] = useState("");
-  
-  // State untuk menyimpan angka input custom quantity
   const [inputs, setInputs] = useState<{[key: string]: string}>({});
-  
+  const [role, setRole] = useState("");
+  const [debugMsg, setDebugMsg] = useState("");
   const router = useRouter();
 
   const fetchData = async () => {
     try {
-      // Ganti localhost ke 127.0.0.1 untuk menghindari masalah IPv6 di Windows
-      const resStock = await fetch('http://127.0.0.1:8001/stocks');
-      if (!resStock.ok) throw new Error("Gagal load stocks");
+      // PERUBAHAN DI SINI: Pakai jalur Proxy /api/inventory
+      const resStock = await fetch('/api/inventory/stocks');
+      if (!resStock.ok) throw new Error(`Stok Error: ${resStock.status}`);
       const s = await resStock.json();
 
-      const resHist = await fetch('http://127.0.0.1:8001/history');
-      if (!resHist.ok) throw new Error("Gagal load history");
+      const resHist = await fetch('/api/inventory/history');
+      if (!resHist.ok) throw new Error(`History Error: ${resHist.status}`);
       const h = await resHist.json();
 
       if (Array.isArray(s)) setStocks(s);
       if (Array.isArray(h)) setHistory(h);
-    } catch (e) {
-      console.error("DASHBOARD ERROR:", e); // Error akan muncul di Console (F12)
+      setDebugMsg(""); 
+    } catch (e: any) {
+      console.error(e);
+      setDebugMsg(`GAGAL KONEK: ${e.message}`);
     }
   };
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userRole = localStorage.getItem('role');
-    
     if (!token) {
       router.push('/login');
     } else {
@@ -47,30 +46,27 @@ export default function Dashboard() {
     }
   }, [router]);
 
-  // Handler update input angka
   const handleInputChange = (id: string, value: string) => {
     setInputs(prev => ({ ...prev, [id]: value }));
   };
 
   const handleAction = async (type: string, id: string) => {
-    // Ambil nilai dari input, default ke 1 jika kosong/invalid
     const qtyInput = parseInt(inputs[id] || '1');
     const quantity = qtyInput > 0 ? qtyInput : 1;
-
     try {
-      const url = type === 'order' ? 'http://127.0.0.1:8000/orders' : 'http://127.0.0.1:8001/restock';
-      await fetch(url, { 
+      // PERUBAHAN DI SINI: Pakai jalur Proxy /api/order dan /api/inventory
+      const url = type === 'order' ? '/api/order/orders' : '/api/inventory/restock';
+      const res = await fetch(url, { 
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify({ item_id: id, quantity: quantity }) 
       });
+      if (!res.ok) throw new Error("Gagal kirim data");
       
-      // Reset input jadi kosong setelah aksi
       setInputs(prev => ({ ...prev, [id]: '' }));
-      fetchData(); // Refresh data instan
-    } catch (e) {
-      console.error("ACTION ERROR:", e);
-      alert("Gagal melakukan aksi. Cek koneksi backend.");
+      fetchData();
+    } catch (e: any) {
+      alert(`Gagal Action: ${e.message}`);
     }
   };
 
@@ -106,8 +102,14 @@ export default function Dashboard() {
           <div className="bg-emerald-500/10 border border-emerald-500/20 px-6 py-3 rounded-2xl text-[10px] font-black text-emerald-500 animate-pulse tracking-widest uppercase">Node Secure</div>
         </header>
 
+        {debugMsg && (
+          <div className="bg-red-500/20 border border-red-500 p-4 rounded-2xl mb-8 text-red-400 font-bold text-center">
+            ⚠️ {debugMsg}
+          </div>
+        )}
+
         <div className="grid grid-cols-3 gap-8 mb-14 text-center">
-          <div className="bg-slate-900/50 p-10 rounded-[3.5rem] border border-slate-800 hover:border-blue-500 transition-all">
+          <div className="bg-slate-900/50 p-10 rounded-[3.5rem] border border-slate-800">
             <p className="text-slate-600 text-[10px] font-black uppercase tracking-widest mb-2">Total Assets</p>
             <p className="text-6xl font-black">{stocks.length}</p>
           </div>

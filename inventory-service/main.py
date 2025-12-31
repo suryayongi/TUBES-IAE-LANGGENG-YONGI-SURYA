@@ -57,4 +57,4 @@ def restock(data: dict):
 
 @app.get("/history")
 def get_history():
-    return history_logs[:10]
+    return history_logs
