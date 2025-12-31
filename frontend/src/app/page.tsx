@@ -9,6 +9,11 @@ export default function Dashboard() {
   const [stocks, setStocks] = useState<StockItem[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [inputs, setInputs] = useState<{[key: string]: string}>({});
+  
+ 
+  const [newItemName, setNewItemName] = useState("");
+  const [newItemQty, setNewItemQty] = useState("");
+
   const [role, setRole] = useState("");
   const [debugMsg, setDebugMsg] = useState("");
   const router = useRouter();
@@ -49,24 +54,21 @@ export default function Dashboard() {
     setInputs(prev => ({ ...prev, [id]: value }));
   };
 
+  
   const handleAction = async (type: string, id: string) => {
     const qtyInput = parseInt(inputs[id] || '1');
     const quantity = qtyInput > 0 ? qtyInput : 1;
 
     if (type === 'order') {
       const currentItem = stocks.find(s => s.item_id === id);
-      
       if (currentItem) {
-        // Cek 1: Apakah stok sudah habis total?
         if (currentItem.quantity <= 0) {
           alert("Maaf stock habis");
-          return; 
+          return;
         }
-        
-        // Cek 2: Apakah jumlah order melebihi sisa stok?
         if (quantity > currentItem.quantity) {
           alert(`Maaf, Pesanan melebihi stock tersedia (Sisa: ${currentItem.quantity})`);
-          return; 
+          return;
         }
       }
     }
@@ -78,13 +80,47 @@ export default function Dashboard() {
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify({ item_id: id, quantity: quantity }) 
       });
-      
       if (!res.ok) throw new Error("Gagal kirim data");
-      
       setInputs(prev => ({ ...prev, [id]: '' }));
-      fetchData(); // Refresh data instan
+      fetchData();
     } catch (e: any) {
       alert(`Gagal Action: ${e.message}`);
+    }
+  };
+
+ 
+  const handleAddItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newItemName || !newItemQty) return;
+
+    try {
+      const res = await fetch('/api/inventory/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ item_id: newItemName, quantity: parseInt(newItemQty) })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.detail || "Gagal menambah barang");
+      } else {
+        setNewItemName("");
+        setNewItemQty("");
+        fetchData();
+      }
+    } catch (e: any) {
+      alert("Error koneksi");
+    }
+  };
+
+  
+  const handleDeleteItem = async (id: string) => {
+    if (!confirm(`Yakin ingin menghapus ${id}?`)) return;
+    try {
+      const res = await fetch(`/api/inventory/items/${id}`, { method: 'DELETE' });
+      if (!res.ok) alert("Gagal menghapus barang");
+      fetchData();
+    } catch (e) {
+      alert("Error koneksi");
     }
   };
 
@@ -100,11 +136,34 @@ export default function Dashboard() {
           <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center font-black text-2xl shadow-lg shadow-blue-600/30">L</div>
           <h1 className="text-2xl font-black tracking-tighter">LANG SCM</h1>
         </div>
-        <nav className="flex-1 space-y-4 font-black text-xs tracking-widest text-slate-500 uppercase">
-          <div className="p-4 bg-blue-600 rounded-2xl text-white cursor-pointer">Dashboard</div>
-          <div className="p-4 cursor-pointer hover:text-slate-300">Inventory List</div>
-        </nav>
-        <div className="p-6 bg-slate-900 rounded-[2.5rem] border border-slate-800">
+        
+        {role === 'admin' && (
+          <div className="mb-8 bg-slate-900 p-5 rounded-3xl border border-slate-800">
+            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Add New Item</h3>
+            <form onSubmit={handleAddItem} className="space-y-3">
+              <input 
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-xs font-bold focus:outline-none focus:border-blue-500"
+                placeholder="Item Name"
+                value={newItemName}
+                onChange={e => setNewItemName(e.target.value)}
+                required
+              />
+              <input 
+                type="number"
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-xs font-bold focus:outline-none focus:border-blue-500"
+                placeholder="Initial Stock"
+                value={newItemQty}
+                onChange={e => setNewItemQty(e.target.value)}
+                required
+              />
+              <button type="submit" className="w-full bg-emerald-600 text-white py-3 rounded-xl text-[10px] font-black uppercase hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-600/20">
+                + Create Item
+              </button>
+            </form>
+          </div>
+        )}
+
+        <div className="mt-auto p-6 bg-slate-900 rounded-[2.5rem] border border-slate-800">
           <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">{role} System</p>
           <p className="text-sm font-bold text-blue-400 mb-6 capitalize">{role}</p>
           <button onClick={handleLogout} className="w-full py-3 bg-red-500/10 text-red-500 rounded-xl font-black text-[10px] uppercase hover:bg-red-500 hover:text-white transition-all">Sign Out</button>
@@ -120,11 +179,7 @@ export default function Dashboard() {
           <div className="bg-emerald-500/10 border border-emerald-500/20 px-6 py-3 rounded-2xl text-[10px] font-black text-emerald-500 animate-pulse tracking-widest uppercase">Node Secure</div>
         </header>
 
-        {debugMsg && (
-          <div className="bg-red-500/20 border border-red-500 p-4 rounded-2xl mb-8 text-red-400 font-bold text-center">
-            ⚠️ {debugMsg}
-          </div>
-        )}
+        {debugMsg && <div className="bg-red-500/20 border border-red-500 p-4 rounded-2xl mb-8 text-red-400 font-bold text-center">⚠️ {debugMsg}</div>}
 
         <div className="grid grid-cols-3 gap-8 mb-14 text-center">
           <div className="bg-slate-900/50 p-10 rounded-[3.5rem] border border-slate-800 hover:border-blue-500 transition-all">
@@ -153,8 +208,20 @@ export default function Dashboard() {
               </thead>
               <tbody className="divide-y divide-slate-900 text-white font-sans">
                 {stocks.map((s) => (
-                  <tr key={s.item_id} className="hover:bg-white/5 transition-all">
-                    <td className="px-12 py-9 font-black text-xl tracking-tighter">{s.item_id}</td>
+                  <tr key={s.item_id} className="hover:bg-white/5 transition-all group">
+                    <td className="px-12 py-9 font-black text-xl tracking-tighter flex items-center gap-4">
+                      {/* TOMBOL DELETE KHUSUS ADMIN */}
+                      {role === 'admin' && (
+                        <button 
+                          onClick={() => handleDeleteItem(s.item_id)}
+                          className="w-8 h-8 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all text-xs font-bold"
+                          title="Delete Item"
+                        >
+                          ✕
+                        </button>
+                      )}
+                      {s.item_id}
+                    </td>
                     <td className="px-12 py-9 text-center">
                       <span className={`px-5 py-2 rounded-full text-[10px] font-black border ${s.quantity < 10 ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-emerald-500/10 border-emerald-500 text-emerald-500'}`}>{s.quantity} UNITS</span>
                     </td>
@@ -186,13 +253,13 @@ export default function Dashboard() {
               {history.map((h, i) => (
                 <div key={i} className="flex gap-5 relative">
                   {i !== history.length - 1 && <div className="absolute left-[13px] top-8 bottom-[-45px] w-[2px] bg-slate-900"></div>}
-                  <div className={`w-7 h-7 rounded-full flex-shrink-0 z-10 border-4 border-slate-950 shadow-lg ${h.type === 'ORDER' ? 'bg-orange-500' : 'bg-blue-600'}`}></div>
+                  <div className={`w-7 h-7 rounded-full flex-shrink-0 z-10 border-4 border-slate-950 shadow-lg ${h.type === 'DELETED' ? 'bg-red-600' : h.type === 'NEW ITEM' ? 'bg-emerald-500' : h.type === 'ORDER' ? 'bg-orange-500' : 'bg-blue-600'}`}></div>
                   <div className="flex-1 -mt-1 text-white">
                     <div className="flex justify-between font-black text-[9px] tracking-widest uppercase">
-                      <span className={h.type === 'ORDER' ? 'text-orange-500' : 'text-blue-500'}>{h.type}</span>
+                      <span className={h.type === 'DELETED' ? 'text-red-500' : h.type === 'NEW ITEM' ? 'text-emerald-500' : h.type === 'ORDER' ? 'text-orange-500' : 'text-blue-500'}>{h.type}</span>
                       <span className="text-slate-700">{h.time}</span>
                     </div>
-                    <p className="text-xs font-bold text-slate-400 mt-2">{h.item} <span className="text-slate-200">{h.type === 'ORDER' ? 'ordered' : 'restocked'}</span>: {h.qty} units</p>
+                    <p className="text-xs font-bold text-slate-400 mt-2">{h.item} {h.type === 'DELETED' ? 'has been removed' : h.type === 'NEW ITEM' ? 'added to inventory' : `changed by ${h.qty}`}</p>
                   </div>
                 </div>
               ))}
