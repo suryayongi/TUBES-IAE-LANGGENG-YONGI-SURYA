@@ -15,7 +15,7 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
-      // PERUBAHAN DI SINI: Pakai jalur Proxy /api/inventory
+      // Pakai jalur Proxy /api/inventory
       const resStock = await fetch('/api/inventory/stocks');
       if (!resStock.ok) throw new Error(`Stok Error: ${resStock.status}`);
       const s = await resStock.json();
@@ -53,18 +53,29 @@ export default function Dashboard() {
   const handleAction = async (type: string, id: string) => {
     const qtyInput = parseInt(inputs[id] || '1');
     const quantity = qtyInput > 0 ? qtyInput : 1;
+    if (type === 'order') {
+      // Cari barang yang mau di-order di data stok saat ini
+      const currentItem = stocks.find(s => s.item_id === id);
+      
+      // Cek apakah barang ada DAN jumlah order melebihi stok
+      if (currentItem && quantity > currentItem.quantity) {
+        alert("Maaf, Pesanan melebihi stock tersedia");
+        return; 
+      }
+    }
+
     try {
-      // PERUBAHAN DI SINI: Pakai jalur Proxy /api/order dan /api/inventory
       const url = type === 'order' ? '/api/order/orders' : '/api/inventory/restock';
       const res = await fetch(url, { 
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify({ item_id: id, quantity: quantity }) 
       });
+      
       if (!res.ok) throw new Error("Gagal kirim data");
       
       setInputs(prev => ({ ...prev, [id]: '' }));
-      fetchData();
+      fetchData(); // Refresh data instan
     } catch (e: any) {
       alert(`Gagal Action: ${e.message}`);
     }
@@ -109,7 +120,7 @@ export default function Dashboard() {
         )}
 
         <div className="grid grid-cols-3 gap-8 mb-14 text-center">
-          <div className="bg-slate-900/50 p-10 rounded-[3.5rem] border border-slate-800">
+          <div className="bg-slate-900/50 p-10 rounded-[3.5rem] border border-slate-800 hover:border-blue-500 transition-all">
             <p className="text-slate-600 text-[10px] font-black uppercase tracking-widest mb-2">Total Assets</p>
             <p className="text-6xl font-black">{stocks.length}</p>
           </div>
