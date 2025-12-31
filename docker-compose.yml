@@ -6,55 +6,50 @@ services:
       - "15672:15672"
     networks:
       - scm-network
-
-  db:
-    image: mysql:8.0
-    environment:
-      MYSQL_ROOT_PASSWORD: admin
-      MYSQL_DATABASE: iae_db
-    ports:
-      - "3306:3306"
-    networks:
-      - scm-network
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
-      interval: 5s
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 5
 
   auth-service:
     build: ./auth-service
+    volumes:
+      - ./auth-service:/app
     ports:
       - "8002:8002"
-    depends_on:
-      db:
-        condition: service_healthy
     networks:
       - scm-network
 
   inventory-service:
     build: ./inventory-service
+    volumes:
+      - ./inventory-service:/app
     ports:
       - "8001:8001"
     depends_on:
-      db:
-        condition: service_healthy
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
     networks:
       - scm-network
 
   order-service:
     build: ./order-service
+    volumes:
+      - ./order-service:/app
     ports:
       - "8000:8000"
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
     networks:
       - scm-network
 
   frontend:
     build: ./frontend
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
     ports:
       - "3000:3000"
     networks:
@@ -62,4 +57,4 @@ services:
 
 networks:
   scm-network:
-    driver: bridge
+    driver: bridge  

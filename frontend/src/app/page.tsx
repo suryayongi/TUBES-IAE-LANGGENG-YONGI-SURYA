@@ -38,7 +38,7 @@ export default function Dashboard() {
       <aside className="w-72 bg-slate-950 p-8 flex flex-col border-r border-slate-900">
         <div className="flex items-center gap-4 mb-14 text-white">
           <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center font-black text-2xl shadow-lg shadow-blue-600/30 font-sans uppercase">L</div>
-          <h1 className="text-2xl font-black tracking-tighter">LANG SCM</h1>
+          <h1 className="text-2xl font-black tracking-tighter">LANG Logistics</h1>
         </div>
         <nav className="flex-1 space-y-4 font-black text-xs tracking-widest text-slate-500 uppercase">
           <div className="p-4 bg-blue-600 rounded-2xl text-white">Dashboard</div>
