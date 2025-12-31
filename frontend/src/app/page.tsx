@@ -60,7 +60,7 @@ export default function Dashboard() {
         // Cek 1: Apakah stok sudah habis total?
         if (currentItem.quantity <= 0) {
           alert("Maaf stock habis");
-          return; r
+          return; 
         }
         
         // Cek 2: Apakah jumlah order melebihi sisa stok?
