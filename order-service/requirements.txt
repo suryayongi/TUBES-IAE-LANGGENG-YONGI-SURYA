@@ -1,4 +1,7 @@
 fastapi
 uvicorn
 pika
-pydantic
+sqlalchemy
+pymysql
+cryptography
+requests

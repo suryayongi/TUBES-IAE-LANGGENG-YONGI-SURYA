@@ -1,41 +1,88 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy.orm import sessionmaker, declarative_base
 import pika, json, threading, time
 from datetime import datetime
+
+# SETTING XAMPP 
+# Format: mysql+pymysql://user:password@host:port/nama_database
+# User default XAMPP: root
+# Password default XAMPP: (kosong)
+# Host: host.docker.internal 
+DATABASE_URL = "mysql+pymysql://root:@host.docker.internal:3306/iae_db"
+
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+# isian tabel
+class Product(Base):
+    __tablename__ = "inventory"
+    id = Column(Integer, primary_key=True, index=True)
+    item_id = Column(String(100), unique=True, index=True)
+    quantity = Column(Integer)
+
+class History(Base):
+    __tablename__ = "history_logs"
+    id = Column(Integer, primary_key=True, index=True)
+    type = Column(String(50))
+    item = Column(String(100))
+    qty = Column(Integer)
+    time = Column(String(50))
+
+# otomatis buat tabel
+try:
+    Base.metadata.create_all(bind=engine)
+    print("Berhasil konek ke XAMPP!", flush=True)
+except Exception as e:
+    print(f"GAGAL KONEK XAMPP: {e}", flush=True)
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-# Data penyimpanan (In-Memory)
-inventory_db = {
-    "Laptop": 100,
-    "Mouse": 50,
-    "Monitor": 5
-}
+#seeding nih
+@app.on_event("startup")
+def startup():
+    try:
+        db = SessionLocal()
+        if not db.query(Product).first():
+            db.add_all([
+                Product(item_id="Laptop", quantity=100),
+                Product(item_id="Mouse", quantity=50),
+                Product(item_id="Monitor", quantity=5)
+            ])
+            db.commit()
+        db.close()
+    except:
+        pass
 
-history_logs = []
-
-# Model data untuk tambah barang baru
 class NewItem(BaseModel):
     item_id: str
     quantity: int
 
+# --- RABBITMQ ---
 def process_order(ch, method, properties, body):
+    db = SessionLocal()
     try:
         data = json.loads(body)
         item_id, qty = data.get("item_id"), data.get("quantity")
-        if item_id in inventory_db and inventory_db[item_id] >= qty:
-            inventory_db[item_id] -= qty
-            history_logs.insert(0, {
-                "type": "ORDER",
-                "item": item_id,
-                "qty": qty,
-                "time": datetime.now().strftime("%H:%M:%S")
-            })
+        product = db.query(Product).filter(Product.item_id == item_id).first()
+        
+        if product and product.quantity >= qty:
+            product.quantity -= qty
+            log = History(type="ORDER", item=item_id, qty=qty, time=datetime.now().strftime("%H:%M:%S"))
+            db.add(log)
+            db.commit()
+            print(f"Order Sukses: {item_id}")
+        else:
+            print(f"Stok Kurang: {item_id}")
         ch.basic_ack(delivery_tag=method.delivery_tag)
     except Exception as e:
-        print(f"Error: {e}", flush=True)
+        print(f"Error: {e}")
+    finally:
+        db.close()
 
 def consume():
     while True:
@@ -45,39 +92,65 @@ def consume():
             chan.queue_declare(queue='stock_check_queue')
             chan.basic_consume(queue='stock_check_queue', on_message_callback=process_order)
             chan.start_consuming()
-        except: time.sleep(5)
+        except:
+            time.sleep(5)
 
 threading.Thread(target=consume, daemon=True).start()
 
+# --- API ---
 @app.get("/stocks")
 def get_stocks():
-    return [{"item_id": k, "quantity": v} for k, v in inventory_db.items()]
+    db = SessionLocal()
+    stocks = db.query(Product).all()
+    db.close()
+    return [{"item_id": s.item_id, "quantity": s.quantity} for s in stocks]
 
 @app.post("/restock")
 def restock(data: dict):
-    item_id, qty = data.get("item_id"), data.get("quantity")
-    if item_id in inventory_db:
-        inventory_db[item_id] += qty
-        history_logs.insert(0, {"type": "RESTOCK", "item": item_id, "qty": qty, "time": datetime.now().strftime("%H:%M:%S")})
+    db = SessionLocal()
+    item, qty = data.get("item_id"), data.get("quantity")
+    product = db.query(Product).filter(Product.item_id == item).first()
+    if product:
+        product.quantity += qty
+        log = History(type="RESTOCK", item=item, qty=qty, time=datetime.now().strftime("%H:%M:%S"))
+        db.add(log)
+        db.commit()
+        db.close()
         return {"message": "Success"}
-    raise HTTPException(status_code=404, detail="Barang tidak ada")
+    db.close()
+    raise HTTPException(status_code=404)
 
 @app.post("/items")
 def add_item(item: NewItem):
-    if item.item_id in inventory_db:
+    db = SessionLocal()
+    if db.query(Product).filter(Product.item_id == item.item_id).first():
+        db.close()
         raise HTTPException(status_code=400, detail="Barang sudah ada")
-    inventory_db[item.item_id] = item.quantity
-    history_logs.insert(0, {"type": "NEW ITEM", "item": item.item_id, "qty": item.quantity, "time": datetime.now().strftime("%H:%M:%S")})
-    return {"message": "Barang berhasil ditambahkan"}
+    new_prod = Product(item_id=item.item_id, quantity=item.quantity)
+    log = History(type="NEW ITEM", item=item.item_id, qty=item.quantity, time=datetime.now().strftime("%H:%M:%S"))
+    db.add(new_prod)
+    db.add(log)
+    db.commit()
+    db.close()
+    return {"message": "Success"}
 
 @app.delete("/items/{item_id}")
 def delete_item(item_id: str):
-    if item_id in inventory_db:
-        del inventory_db[item_id]
-        history_logs.insert(0, {"type": "DELETED", "item": item_id, "qty": 0, "time": datetime.now().strftime("%H:%M:%S")})
-        return {"message": "Barang dihapus"}
-    raise HTTPException(status_code=404, detail="Barang tidak ditemukan")
+    db = SessionLocal()
+    product = db.query(Product).filter(Product.item_id == item_id).first()
+    if product:
+        db.delete(product)
+        log = History(type="DELETED", item=item_id, qty=0, time=datetime.now().strftime("%H:%M:%S"))
+        db.add(log)
+        db.commit()
+        db.close()
+        return {"message": "Deleted"}
+    db.close()
+    raise HTTPException(status_code=404)
 
 @app.get("/history")
 def get_history():
-    return history_logs # Kirim semua history tanpa batas
+    db = SessionLocal()
+    logs = db.query(History).order_by(History.id.desc()).all()
+    db.close()
+    return [{"type": l.type, "item": l.item, "qty": l.qty, "time": l.time} for l in logs]

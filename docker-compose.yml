@@ -12,6 +12,9 @@ services:
       timeout: 5s
       retries: 5
 
+  # SERVICE DB & PHPMYADMIN KITA HAPUS
+  # KARENA SUDAH PAKAI XAMPP
+
   auth-service:
     build: ./auth-service
     volumes:
@@ -58,4 +61,4 @@ services:
 
 networks:
   scm-network:
-    driver: bridge  
+    driver: bridge

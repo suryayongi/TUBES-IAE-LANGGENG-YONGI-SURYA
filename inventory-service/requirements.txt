@@ -4,5 +4,3 @@ pika
 sqlalchemy
 pymysql
 cryptography
-python-jose
-passlib
