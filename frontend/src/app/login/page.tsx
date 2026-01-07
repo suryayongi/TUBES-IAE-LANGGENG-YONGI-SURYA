@@ -12,7 +12,6 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     try {
-      // PERUBAHAN DI SINI: Pakai jalur Proxy /api/auth
       const res = await fetch('/api/auth/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -30,9 +29,6 @@ export default function LoginPage() {
       setError('CONNECTION ERROR');
     }
   };
-
-  // ... (Sisa kode tampilan login sama persis seperti sebelumnya)
-  // Copy dari kode login sebelumnya mulai dari return (...) sampai bawah
   return (
     <div className="flex h-screen bg-slate-950 items-center justify-center font-sans text-white">
       <div className="w-full max-w-md bg-slate-900 p-12 rounded-[3rem] border border-slate-800 shadow-2xl">
