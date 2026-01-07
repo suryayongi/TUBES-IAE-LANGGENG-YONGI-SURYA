@@ -4,7 +4,7 @@ Dokumentasi ini disusun sebagai laporan Tugas Besar mata kuliah **Integrasi Apli
 
 ---
 
-## 👨‍💻 Identitas Pengembang
+## 👨‍💻 Identitas Developer
 
 **Nama** : Langgeng Yongi Surya  
 **NIM** : 102022300019  
