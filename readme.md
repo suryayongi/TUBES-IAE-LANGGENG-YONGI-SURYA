@@ -14,7 +14,7 @@ Dokumentasi ini disusun sebagai laporan Tugas Besar mata kuliah **Integrasi Apli
 
 ## 📖 Deskripsi Sistem
 
-Aplikasi ini dirancang untuk menangani kompleksitas integrasi data antar layanan dalam sebuah perusahaan logistik. Sistem memisahkan logika bisnis menjadi beberapa layanan independen (*microservices*) yang berkomunikasi secara asinkron menggunakan *Message Broker*. Hal ini memungkinkan pemrosesan pesanan dan pembaruan stok terjadi secara *real-time* namun tetap menjaga independensi antar layanan.
+Aplikasi ini dirancang untuk menangani kompleksitas integrasi data antar layanan dalam sebuah perusahaan logistik. Sistem memisahkan logika bisnis menjadi beberapa layanan independen (**microservices**) yang berkomunikasi secara asinkron menggunakan **Message Broker**. Hal ini memungkinkan pemrosesan pesanan dan pembaruan stok terjadi secara **real-time** namun tetap menjaga independensi antar layanan.
 
 ### Arsitektur Layanan
 Sistem terdiri dari komponen-komponen berikut:
