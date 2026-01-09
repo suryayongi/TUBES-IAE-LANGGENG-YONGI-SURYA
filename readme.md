@@ -89,6 +89,20 @@ Gunakan mode ini untuk simulasi orkestrasi container.
 5.  Pilih menu **4** (Cek Status) untuk memastikan status **Running**.
 6.  Buka browser: [http://localhost:3000](http://localhost:3000).
 
+
+Alur Data Aplikasi:
+
+Docker Compose/Kubernetes menyiapkan jaringan.
+
+Auth Service memvalidasi login user.
+
+Frontend memanggil API untuk menampilkan data.
+
+User Order -> Order Service Kirim Pesan ke RabbitMQ (Publish).
+
+Inventory Service Menerima Pesan (Consume).
+
+Inventory Service update Database MySQL (XAMPP) via host.docker.internal.
 ---
 Langgeng Yongi Surya
 102022300019
