@@ -11,7 +11,7 @@ from datetime import datetime
 # User default XAMPP: root
 # Password default XAMPP: (kosong)
 # Host: host.docker.internal 
-DATABASE_URL = "mysql+pymysql://root:@host.docker.internal:3306/iaedemo"
+DATABASE_URL = "mysql+pymysql://root:@host.docker.internal:3306/iae_db"
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
